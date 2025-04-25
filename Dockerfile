@@ -1,68 +1,40 @@
-# Build Stage
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm
 
-# Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies
-RUN pnpm install
+# 🔥 Remove husky from prepare
+RUN sed -i '/"prepare": "husky",/d' package.json
 
-# Copy source code
+# ✅ Install everything including devDependencies
+RUN pnpm install --frozen-lockfile
+
 COPY . .
 
-# Generate Prisma client
-RUN pnpm prisma generate
+# ✅ Generate Prisma Client
+RUN pnpm prisma:generate
 
-# Build application
+# ✅ Build the app
 RUN pnpm build
 
-# Production Stage
-FROM node:22-alpine
+# ✅ Prune devDependencies (Husky is already removed from scripts)
+RUN pnpm prune --prod
 
-WORKDIR /usr/src/app
+# ---- Production stage
+FROM node:20-alpine AS production
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
 
-# Install wget for healthcheck
-RUN apk add --no-cache wget
-
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-
-# Install production dependencies only
-RUN pnpm install --prod
-
-# Copy Prisma schema and generated client
-COPY --from=builder /usr/src/app/prisma ./prisma
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-
-# Copy built application
-COPY --from=builder /usr/src/app/dist ./dist
-
-# Create startup script
-RUN echo '#!/bin/sh\n\
-echo "Running database migrations..."\n\
-pnpm prisma migrate deploy\n\
-echo "Starting application..."\n\
-exec pnpm start:prod\n\
-' > /usr/src/app/docker-entrypoint.sh \
-&& chmod +x /usr/src/app/docker-entrypoint.sh
-
-# Expose port
-EXPOSE 3000
-
-# Set NODE_ENV
 ENV NODE_ENV=production
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/prisma ./prisma
 
-# Start the application
-CMD ["/usr/src/app/docker-entrypoint.sh"]
+EXPOSE 3000
+
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

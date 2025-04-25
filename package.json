@@ -1,7 +1,7 @@
 {
-  "name": "ecommerce-nestjs-template",
-  "version": "0.0.1",
-  "description": "",
+  "name": "media-studio-api",
+  "version": "0.1.0",
+  "description": "Media Studio API for cloud deployment",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -18,8 +18,18 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "prepare": "husky",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:prod": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "prisma db seed",
+    "docker:build": "docker build -t media-studio-api:latest .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env media-studio-api:latest",
+    "cloud:build": "docker build -t media-studio-api:latest .",
+    "cloud:push:gcr": "docker tag media-studio-api:latest gcr.io/${PROJECT_ID}/media-studio-api:latest && docker push gcr.io/${PROJECT_ID}/media-studio-api:latest",
+    "cloud:push:artifact-registry": "docker tag media-studio-api:latest ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/media-studio-api:latest && docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/media-studio-api:latest"
   },
   "dependencies": {
     "@google-cloud/common": "^6.0.0",

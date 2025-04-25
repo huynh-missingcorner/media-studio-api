@@ -12,10 +12,38 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+
       # Database
       DATABASE_URL: postgresql://${PGUSER:-pg}:${PGPASSWORD:-pg}@postgres:5432/${PGDATABASE:-media-studio}
+
       # Redis
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis}@redis:6379
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-secret}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-604800}
+
+      ENABLE_SEEDING: ${ENABLE_SEEDING:-true}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-strong_admin_password}
+      ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-Admin}
+      ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-User}
+
+      #Vertex AI
+      VERTEX_AI_LOCATION: ${VERTEX_AI_LOCATION:-us-central1}
+      VERTEX_AI_PROJECT_ID: ${VERTEX_AI_PROJECT_ID:-media-studio-dev}
+      VERTEX_AI_MODEL_ID: ${VERTEX_AI_MODEL_ID:-media-studio-dev}
+      VERTEX_AI_STORAGE_URI: ${VERTEX_AI_STORAGE_URI:-}
+      STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:-}
+
+      #Google Cloud Storage
+      GCS_SIGNED_URL_EXPIRATION_HOURS: ${GCS_SIGNED_URL_EXPIRATION_HOURS:-1}
+
     depends_on:
       postgres:
         condition: service_healthy
