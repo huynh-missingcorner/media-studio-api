@@ -557,6 +557,7 @@ export class MediaService {
         prompt,
         sampleCount: parameters.sampleCount || 1,
         durationSeconds: parameters.durationSeconds || 1,
+        aspectRatio: parameters.aspectRatio || '16:9',
       });
 
       // Update the generation record with the operation name

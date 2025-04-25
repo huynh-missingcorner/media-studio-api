@@ -5,7 +5,7 @@ export interface ImageGenerationParams {
   enhancePrompt?: boolean;
   seed?: number;
   guidanceScale?: number;
-  aspectRatio?: '1:1' | '16:9' | '3:2' | '4:3' | '9:16' | '2:3' | '3:4';
+  aspectRatio?: string;
   storageUri?: string;
 }
 
@@ -15,7 +15,7 @@ export interface VideoGenerationParams {
   negativePrompt?: string;
   seed?: number;
   guidanceScale?: number;
-  aspectRatio?: '16:9' | '9:16' | '1:1';
+  aspectRatio?: string;
   frameRate?: number;
   durationSeconds?: number;
   storageUri?: string;

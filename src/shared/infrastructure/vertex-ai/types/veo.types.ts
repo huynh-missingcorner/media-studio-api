@@ -9,7 +9,7 @@ export interface VeoParameters {
   negativePrompt?: string;
   seed?: number;
   guidanceScale?: number;
-  aspectRatio?: '16:9' | '9:16' | '1:1';
+  aspectRatio?: string;
   outputFormat?: string;
   outputMimeType?: string;
   frameRate?: number;

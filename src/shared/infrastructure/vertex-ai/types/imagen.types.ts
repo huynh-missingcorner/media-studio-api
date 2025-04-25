@@ -18,9 +18,9 @@ export interface ImagenParameters {
   enhancePrompt?: boolean;
   seed?: number;
   guidanceScale?: number;
-  outputMimeType?: 'image/png' | 'image/jpeg';
-  aspectRatio?: '1:1' | '16:9' | '3:2' | '4:3' | '9:16' | '2:3' | '3:4';
-  responseMimeType?: 'application/json' | 'application/x-protobuf';
+  outputMimeType?: string;
+  aspectRatio?: string;
+  responseMimeType?: string;
   sampleImageStyle?: string;
   personGeneration?: string;
   promptLanguage?: string;
