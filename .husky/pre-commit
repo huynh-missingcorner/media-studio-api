@@ -1,0 +1,23 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit hook..."
+
+# Load NVM if available
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Run typecheck
+echo "Running typecheck..."
+if ! pnpm typecheck; then
+    echo "❌ Type checking failed! Please fix type errors."
+    exit 1
+fi
+
+# Run lint-staged
+echo "Running lint-staged..."
+if ! pnpm lint-staged; then
+    echo "❌ Lint-staged checks failed!"
+    exit 1
+fi
+
+echo "✅ All checks passed!"

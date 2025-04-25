@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id            String             @id @default(uuid())
+  email         String             @unique
+  passwordHash  String
+  mediaGenerations MediaGeneration[]
+  firstName     String
+  lastName      String
+  role          UserRole           @default(USER)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  @@index([email])
+  @@index([role])
+}
+
+model Project {
+  id              String             @id @default(uuid())
+  name            String
+  description     String?
+  googleProjectId String?
+  mediaGenerations MediaGeneration[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  @@index([name])
+}
+
+model MediaGeneration {
+  id           String       @id @default(uuid())
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  project      Project      @relation(fields: [projectId], references: [id])
+  projectId    String
+  operationId  String? // For async operations
+
+  mediaType    MediaType
+  prompt       String
+  parameters   Json
+  status       RequestStatus @default(PENDING)
+  errorMessage String?
+  results      MediaResult[]
+  createdAt    DateTime     @default(now())
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([mediaType])
+  @@index([createdAt])
+  @@index([operationId])
+}
+
+model MediaResult {
+  id                 String          @id @default(uuid())
+  mediaGeneration    MediaGeneration @relation(fields: [mediaGenerationId], references: [id], onDelete: Cascade)
+  mediaGenerationId  String
+  resultUrl          String
+  metadata           Json?
+  createdAt          DateTime        @default(now())
+
+  @@index([mediaGenerationId])
+}
+
+enum MediaType {
+  IMAGE
+  AUDIO
+  MUSIC
+  VIDEO
+}
+
+enum RequestStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
