@@ -37,14 +37,27 @@ export class VeoService {
    */
   async initiateVideoGeneration(params: VideoGenerationParams): Promise<string> {
     try {
-      const { prompt, sampleCount = 1, ...rest } = params;
+      const { prompt, sampleCount = 1, negativePrompt, image, modelId, ...rest } = params;
 
-      // Create instances array
-      const instances: VeoInstance[] = [{ prompt }];
+      // Create instances array with optional image
+      const instance: VeoInstance = { prompt };
+
+      // Add image to instance if provided
+      if (image && (image.gcsUri || image.bytesBase64Encoded)) {
+        instance.image = {
+          mimeType: 'image/jpeg', // Default mime type
+          gcsUri: image.gcsUri || '',
+        };
+
+        this.logger.debug('Adding reference image to video generation request');
+      }
+
+      const instances: VeoInstance[] = [instance];
 
       // Create parameters object
       const parameters: VeoParameters = {
         sampleCount,
+        negativePrompt,
         storageUri:
           rest.storageUri ||
           this.configService.get<string>(
@@ -54,9 +67,12 @@ export class VeoService {
         ...rest,
       };
 
+      // Use custom model if provided
+      const selectedModelId = modelId || this.modelId;
+
       // Call the model
       const payload: VeoRequest = { instances, parameters };
-      const response = await this.callVertexAiInitiate(payload);
+      const response = await this.callVertexAiInitiate(payload, selectedModelId);
 
       if (!response.name) {
         throw new VeoApiError('No operation name returned from Veo API', undefined);
@@ -117,15 +133,19 @@ export class VeoService {
   /**
    * Call the Vertex AI API to initiate a Veo operation
    * @param payload Request payload
+   * @param modelId Optional model ID to use instead of the default
    * @returns API operation initiation response
    */
-  private async callVertexAiInitiate(payload: VeoRequest): Promise<OperationResponse> {
+  private async callVertexAiInitiate(
+    payload: VeoRequest,
+    modelId: string = this.modelId,
+  ): Promise<OperationResponse> {
     try {
       // Get access token
       const accessToken = await this.googleCloudService.getAccessToken();
 
       // Get model endpoint
-      const endpoint = this.getModelEndpoint();
+      const endpoint = this.getModelEndpoint(modelId);
 
       // Make API call
       const response = await firstValueFrom(
@@ -151,21 +171,23 @@ export class VeoService {
   }
 
   /**
-   * Get the endpoint URL for Veo
-   * @returns Full URL endpoint for the Veo API
+   * Get the endpoint URL for Veo model
+   * @param modelId Optional model ID to use instead of the default
+   * @returns Full URL endpoint for the Veo predict API
    */
-  private getModelEndpoint(): string {
+  private getModelEndpoint(modelId: string = this.modelId): string {
     // Video generation needs predictLongRunning
     const predictType = 'predictLongRunning';
-    return `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:${predictType}`;
+    return `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${modelId}:${predictType}`;
   }
 
   /**
-   * Get the endpoint URL for Veo
-   * @returns Full URL endpoint for the Veo API
+   * Get the endpoint URL for Veo operations
+   * @param modelId Optional model ID to use instead of the default
+   * @returns Full URL endpoint for the Veo operations API
    */
-  private getOperationEndpoint(): string {
+  private getOperationEndpoint(modelId: string = this.modelId): string {
     const predictType = 'fetchPredictOperation';
-    return `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:${predictType}`;
+    return `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${modelId}:${predictType}`;
   }
 }

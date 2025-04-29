@@ -24,6 +24,10 @@ export class AuthController {
     status: HttpStatus.CONFLICT,
     description: 'User with this email already exists',
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Invalid invite code',
+  })
   @ApiBody({ type: RegisterDto })
   async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
     return this.authService.register(registerDto);

@@ -11,6 +11,7 @@ import { MediaResponseDto } from './dto/media-response.dto';
 import { MediaHistoryQueryDto } from './dto/media-history-query.dto';
 import { PaginatedResponse } from '../../shared/dto/pagination.dto';
 import { User } from '@prisma/client';
+import { ImageUpscaleDto } from './dto/image-upscale.dto';
 
 @ApiTags('Media')
 @Controller('media')
@@ -31,6 +32,20 @@ export class MediaController {
     @Body() imageDto: ImageGenerationDto,
   ): Promise<MediaResponseDto> {
     return this.mediaService.generateImage(user.id, imageDto);
+  }
+
+  @Post('image/upscale')
+  @ApiOperation({ summary: 'Upscale an image using Vertex AI Media Studio' })
+  @ApiResponse({
+    status: 201,
+    description: 'Image upscaling request created',
+    type: MediaResponseDto,
+  })
+  async upscaleImage(
+    @CurrentUser() user: User,
+    @Body() upscaleDto: ImageUpscaleDto,
+  ): Promise<MediaResponseDto> {
+    return this.mediaService.upscaleImage(user.id, upscaleDto);
   }
 
   @Post('video/async')

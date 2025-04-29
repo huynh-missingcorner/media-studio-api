@@ -24,6 +24,21 @@ import { Queue } from 'bull';
 import { MEDIA_GENERATION_QUEUE, MediaGenerationJob } from './queues/media-generation.queue';
 import { InjectQueue } from '@nestjs/bull';
 import { v4 as uuidv4 } from 'uuid';
+import { ReferenceDataDto } from './dto/reference-data.dto';
+import { ReferenceType as AppReferenceType, SecondaryReferenceType } from './types/reference.types';
+import {
+  ReferenceImage,
+  ReferenceImageConfig,
+  ReferenceType,
+  MaskMode,
+  SubjectType,
+  ControlType,
+  SubjectReferenceImage,
+  MaskReferenceImage,
+  StyleReferenceImage,
+  ControlReferenceImage,
+} from '../../shared/infrastructure/vertex-ai/interfaces/generation-params.interface';
+import { ImageUpscaleDto } from './dto/image-upscale.dto';
 
 @Injectable()
 export class MediaService {
@@ -53,20 +68,31 @@ export class MediaService {
         projectId: dto.projectId,
         mediaType: MediaType.IMAGE,
         prompt: dto.prompt,
-        parameters: {
-          aspectRatio: dto.aspectRatio,
-          sampleCount: dto.sampleCount,
-        },
+        parameters: JSON.parse(
+          JSON.stringify({
+            aspectRatio: dto.aspectRatio,
+            sampleCount: dto.sampleCount,
+            negativePrompt: dto.negativePrompt,
+            model: dto.model,
+            referenceData: dto.referenceData,
+          }),
+        ) as Prisma.InputJsonValue,
         status: RequestStatus.PENDING,
       },
     });
 
     try {
+      // Map reference data to reference images format expected by Vertex AI
+      const referenceImages = this.mapReferenceDataToReferenceImages(dto.referenceData || []);
+
       // Call Vertex AI service
       const result = await this.vertexAiService.generateImage({
         prompt: dto.prompt,
         sampleCount: dto.sampleCount,
         aspectRatio: dto.aspectRatio,
+        negativePrompt: dto.negativePrompt,
+        referenceImages,
+        modelId: dto.model,
       });
 
       // Handle multiple results
@@ -143,6 +169,120 @@ export class MediaService {
     }
   }
 
+  /**
+   * Maps ReferenceDataDto objects to ReferenceImage objects for the Vertex AI API
+   * @param referenceData The reference data from the client
+   * @returns Array of ReferenceImage objects formatted for Vertex AI
+   */
+  private mapReferenceDataToReferenceImages(referenceData: ReferenceDataDto[]): ReferenceImage[] {
+    if (!referenceData || !referenceData.length) {
+      return [];
+    }
+
+    return referenceData.map((data) => {
+      // Map the reference image config
+      const referenceImageConfig: ReferenceImageConfig = {
+        gcsUri: data.referenceImage.gcsUri,
+        // bytesBase64Encoded: data.referenceImage.bytesBase64Encoded, // We don't need this for now
+      };
+
+      // Create the base reference image object
+      const baseReferenceImage: ReferenceImage = {
+        referenceId: data.referenceId,
+        referenceType: this.mapReferenceType(data.referenceType),
+        referenceImage: referenceImageConfig,
+      };
+
+      // Add specific configs based on reference type
+      const vertexAiReferenceType = this.mapReferenceType(data.referenceType);
+
+      switch (vertexAiReferenceType) {
+        case ReferenceType.REFERENCE_TYPE_SUBJECT:
+          return {
+            ...baseReferenceImage,
+            subjectImageConfig: {
+              subjectType: this.mapSecondaryReferenceTypeToSubjectType(data.secondaryReferenceType),
+              imageDescription: data.description || '',
+            },
+          } as SubjectReferenceImage;
+
+        case ReferenceType.REFERENCE_TYPE_MASK:
+          return {
+            ...baseReferenceImage,
+            maskImageConfig: {
+              maskMode: MaskMode.MASK_MODE_USER_PROVIDED, // Default to user provided mask
+            },
+          } as MaskReferenceImage;
+
+        case ReferenceType.REFERENCE_TYPE_STYLE:
+          return {
+            ...baseReferenceImage,
+            styleImageConfig: {
+              styleDescription: data.description || '',
+            },
+          } as StyleReferenceImage;
+
+        case ReferenceType.REFERENCE_TYPE_CONTROL:
+          return {
+            ...baseReferenceImage,
+            controlImageConfig: {
+              controlType: ControlType.CONTROL_TYPE_CANNY, // Default to canny edge
+              enableControlImageComputation: true,
+            },
+          } as ControlReferenceImage;
+
+        default:
+          return baseReferenceImage;
+      }
+    });
+  }
+
+  /**
+   * Maps application reference type to Vertex AI reference type
+   * @param referenceType The reference type from the application
+   * @returns The corresponding Vertex AI reference type
+   */
+  private mapReferenceType(referenceType?: AppReferenceType): ReferenceType {
+    // Map the application reference type to Vertex AI reference type
+    switch (referenceType) {
+      case AppReferenceType.PERSON:
+      case AppReferenceType.PRODUCT:
+      case AppReferenceType.ANIMAL:
+        return ReferenceType.REFERENCE_TYPE_SUBJECT;
+      case AppReferenceType.MASK:
+        return ReferenceType.REFERENCE_TYPE_MASK;
+      case AppReferenceType.STYLE:
+        return ReferenceType.REFERENCE_TYPE_STYLE;
+      case AppReferenceType.CONTROL:
+        return ReferenceType.REFERENCE_TYPE_CONTROL;
+      case AppReferenceType.RAW:
+        return ReferenceType.REFERENCE_TYPE_RAW;
+      default:
+        return ReferenceType.REFERENCE_TYPE_SUBJECT;
+    }
+  }
+
+  /**
+   * Maps secondary reference type to subject type
+   * @param secondaryReferenceType The secondary reference type
+   * @returns The corresponding subject type for Vertex AI
+   */
+  private mapSecondaryReferenceTypeToSubjectType(
+    secondaryReferenceType?: SecondaryReferenceType,
+  ): SubjectType {
+    // Map the application secondary reference type to Vertex AI subject type
+    switch (secondaryReferenceType) {
+      case SecondaryReferenceType.SUBJECT_TYPE_PERSON:
+        return SubjectType.SUBJECT_TYPE_PERSON;
+      case SecondaryReferenceType.SUBJECT_TYPE_PRODUCT:
+        return SubjectType.SUBJECT_TYPE_PRODUCT;
+      case SecondaryReferenceType.SUBJECT_TYPE_ANIMAL:
+        return SubjectType.SUBJECT_TYPE_ANIMAL;
+      default:
+        return SubjectType.SUBJECT_TYPE_DEFAULT;
+    }
+  }
+
   async generateVideoAsync(userId: string, dto: VideoGenerationDto): Promise<string> {
     const jobData: InitiateVideoGenerationJobData = {
       userId,
@@ -150,12 +290,14 @@ export class MediaService {
       prompt: dto.prompt,
       operationId: uuidv4(),
       parameters: {
+        negativePrompt: dto.negativePrompt,
         durationSeconds: dto.durationSeconds,
         aspectRatio: dto.aspectRatio,
         enhancePrompt: dto.enhancePrompt,
         sampleCount: dto.sampleCount,
         model: dto.model,
         seed: dto.seed,
+        referenceImage: dto.referenceImage,
       },
     };
 
@@ -552,12 +694,24 @@ export class MediaService {
     });
 
     try {
+      // Prepare image configuration if a reference image is provided
+      let image;
+      if (parameters.referenceImage) {
+        image = {
+          gcsUri: parameters.referenceImage.gcsUri,
+          bytesBase64Encoded: parameters.referenceImage.bytesBase64Encoded,
+        };
+      }
+
       // Call Vertex AI service to initiate generation
       const operationName = await this.vertexAiService.initiateVideoGeneration({
         prompt,
         sampleCount: parameters.sampleCount || 1,
         durationSeconds: parameters.durationSeconds || 1,
         aspectRatio: parameters.aspectRatio || '16:9',
+        negativePrompt: parameters.negativePrompt || '',
+        image,
+        modelId: parameters.model,
       });
 
       // Update the generation record with the operation name
@@ -688,6 +842,108 @@ export class MediaService {
           errorMessage: errorMessage,
         },
       });
+    }
+  }
+
+  async upscaleImage(userId: string, dto: ImageUpscaleDto): Promise<MediaResponseDto> {
+    // Validate project exists
+    const project = await this.prisma.project.findUnique({
+      where: { id: dto.projectId },
+    });
+
+    if (!project) {
+      throw new BadRequestException('Project not found');
+    }
+
+    // Create a record of the request with PENDING status
+    const mediaGeneration = await this.prisma.mediaGeneration.create({
+      data: {
+        userId,
+        projectId: dto.projectId,
+        mediaType: MediaType.IMAGE,
+        prompt: 'Image Upscaling', // No prompt for upscaling
+        parameters: JSON.parse(
+          JSON.stringify({
+            upscaleFactor: dto.upscaleFactor,
+            gcsUri: dto.gcsUri,
+          }),
+        ) as Prisma.InputJsonValue,
+        status: RequestStatus.PENDING,
+      },
+    });
+
+    try {
+      // Call Vertex AI service
+      const result = await this.vertexAiService.upscaleImage({
+        gcsUri: dto.gcsUri,
+        upscaleFactor: dto.upscaleFactor,
+      });
+
+      // Handle results - should only have one result for upscaling
+      const predictions = result?.predictions || [];
+      const mediaResults = [];
+
+      for (let i = 0; i < predictions.length; i++) {
+        const prediction = predictions[i];
+        const gcsUri = prediction?.gcsUri || '';
+
+        if (gcsUri) {
+          // Store the GCS URI directly
+          const mediaResult = await this.prisma.mediaResult.create({
+            data: {
+              mediaGenerationId: mediaGeneration.id,
+              resultUrl: gcsUri,
+              metadata: {
+                index: i,
+                mimeType: prediction.mimeType || 'image/png',
+                isUpscaled: true,
+                upscaleFactor: dto.upscaleFactor,
+              },
+            },
+          });
+          mediaResults.push(mediaResult);
+        }
+      }
+
+      if (mediaResults.length === 0) {
+        throw new Error('No valid results returned from AI service');
+      }
+
+      // Update the generation record with success status
+      const updatedGeneration = await this.prisma.mediaGeneration.update({
+        where: { id: mediaGeneration.id },
+        data: {
+          status: RequestStatus.SUCCEEDED,
+        },
+        include: {
+          results: true,
+        },
+      });
+
+      // Convert GCS URIs to signed URLs only for the response
+      if (updatedGeneration.results && updatedGeneration.results.length > 0) {
+        updatedGeneration.results = await this.getSignedUrlsForResults(
+          updatedGeneration.results,
+          true, // Throw errors during image upscaling
+        );
+      }
+
+      return new MediaResponseDto(updatedGeneration);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error upscaling image: ${errorMessage}`);
+
+      // Update the record with failure status
+      await this.prisma.mediaGeneration.update({
+        where: { id: mediaGeneration.id },
+        data: {
+          status: RequestStatus.FAILED,
+          errorMessage: errorMessage,
+        },
+      });
+
+      // Re-throw the error to be handled by the global exception filter
+      throw error;
     }
   }
 }

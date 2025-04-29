@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { MediaType } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -19,6 +19,15 @@ export class MediaGenerationDto {
   @IsNotEmpty()
   @IsString()
   prompt: string;
+
+  @ApiProperty({
+    description: 'The negative prompt for the media generation',
+    example: 'low quality, blurry, distorted',
+    default: '',
+  })
+  @IsString()
+  @IsOptional()
+  negativePrompt?: string;
 
   @ApiProperty({
     description: 'The type of media to generate',

@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -17,6 +22,12 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
+    // Verify invite code
+    const validInviteCode = this.configService.get<string>('INVITE_CODE');
+    if (dto.inviteCode !== validInviteCode) {
+      throw new ForbiddenException('Invalid invite code');
+    }
+
     // Check if user exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },

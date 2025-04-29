@@ -9,12 +9,17 @@ export class GoogleCloudService {
   private readonly projectId: string;
   private readonly storage: Storage;
   private readonly signedUrlExpirationTimeHours: number;
+  private readonly storageBucket: string;
 
   constructor(private readonly configService: ConfigService) {
     this.projectId = this.configService.get<string>('VERTEX_AI_PROJECT_ID', 'default_project_id');
     this.signedUrlExpirationTimeHours = this.configService.get<number>(
       'GCS_SIGNED_URL_EXPIRATION_HOURS',
       24,
+    );
+    this.storageBucket = this.configService.get<string>(
+      'GCS_STORAGE_BUCKET',
+      'default-storage-bucket',
     );
 
     this.storage = new Storage({
@@ -104,6 +109,55 @@ export class GoogleCloudService {
       }
 
       throw new Error('Failed to generate signed URL');
+    }
+  }
+
+  /**
+   * Upload base64 encoded data to Google Cloud Storage
+   * @param base64Data The base64 encoded data
+   * @param fileName The name of the file to create
+   * @param mimeType The MIME type of the file
+   * @param userId User ID for organizing storage
+   * @param projectId Project ID for organizing storage
+   * @returns The Google Cloud Storage URI (gs://bucket-name/path/to/file)
+   */
+  async uploadBase64ToGcs(
+    base64Data: string,
+    fileName: string,
+    mimeType: string,
+    userId: string,
+    projectId: string,
+  ): Promise<string> {
+    try {
+      // Create a unique path for the file
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filePath = `users/${userId}/projects/${projectId}/upscaled/${timestamp}_${fileName}`;
+
+      this.logger.log(`Uploading base64 data to ${filePath}`);
+
+      // Decode base64 string to buffer
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Get bucket reference
+      const bucket = this.storage.bucket(this.storageBucket);
+      const file = bucket.file(filePath);
+
+      // Upload the buffer to GCS
+      await file.save(buffer, {
+        metadata: {
+          contentType: mimeType,
+        },
+      });
+
+      // Return the GCS URI
+      return `gs://${this.storageBucket}/${filePath}`;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Error uploading base64 data to GCS: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw new Error('Failed to upload base64 data to Google Cloud Storage');
     }
   }
 }

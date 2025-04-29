@@ -1,9 +1,12 @@
 import { BaseRequest, BaseResponse } from './models.types';
+import { ReferenceImage } from '../interfaces/generation-params.interface';
 
 export interface ImagenInstance {
   prompt: string;
+  referenceImages?: ReferenceImage[];
   image?: {
-    bytesBase64Encoded: string; // for inpainting or outpainting
+    bytesBase64Encoded?: string; // for inpainting or outpainting
+    gcsUri?: string; // for image upscaling
     mimeType?: string;
   };
   mask?: {
@@ -30,6 +33,7 @@ export interface ImagenParameters {
   outputOptions?: ImagenOutputOptions;
   storageUri?: string;
   upscaleConfig?: ImagenUpscaleConfig;
+  mode?: string;
 }
 
 export interface ImagenOutputOptions {

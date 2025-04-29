@@ -2,6 +2,10 @@ import { BaseRequest, BaseResponse } from './models.types';
 
 export interface VeoInstance {
   prompt: string;
+  image?: {
+    mimeType: string;
+    gcsUri: string;
+  };
 }
 
 export interface VeoParameters {
@@ -14,6 +18,7 @@ export interface VeoParameters {
   outputMimeType?: string;
   frameRate?: number;
   durationSeconds?: number;
+  enhancePrompt?: boolean;
   storageUri?: string;
   outputOptions?: VeoOutputOptions;
 }

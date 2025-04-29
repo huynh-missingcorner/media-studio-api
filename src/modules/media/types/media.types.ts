@@ -9,6 +9,13 @@ export enum ImageAspectRatio {
 export enum ImageGenerationModel {
   IMAGEN_3 = 'imagen-3.0-generate-002',
   IMAGEN_3_FAST = 'imagen-3.0-fast-generate-001',
+  IMAGEN_3_CAPABILITY = 'imagen-3.0-capability-001',
+  IMAGE_GENERATION_002 = 'imagegeneration@002',
+}
+
+export enum UpscaleFactor {
+  X2 = 'x2',
+  X4 = 'x4',
 }
 
 export enum VideoGenerationModel {

@@ -14,6 +14,7 @@ export const envSchema = z.object({
   JWT_ACCESS_EXPIRATION: z.string().regex(/^\d+[smhd]$/),
   JWT_REFRESH_EXPIRATION: z.string().regex(/^\d+[smhd]$/),
   JWT_REFRESH_SECRET: z.string().min(32),
+  INVITE_CODE: z.string(),
 
   // GOOGLE VERTEX AI
   VERTEX_AI_LOCATION: z.string(),

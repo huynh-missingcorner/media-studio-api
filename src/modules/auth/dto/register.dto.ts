@@ -39,4 +39,13 @@ export class RegisterDto {
   @IsString()
   @IsNotEmpty()
   lastName: string;
+
+  @ApiProperty({
+    description:
+      'Required invite code for registration. Contact administrators to obtain a valid code.',
+    example: 'INVITE_CODE_2024',
+  })
+  @IsString()
+  @IsNotEmpty()
+  inviteCode: string;
 }

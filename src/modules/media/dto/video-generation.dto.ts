@@ -1,8 +1,11 @@
-import { IsBoolean, IsEnum, IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, Max, Min, ValidateNested } from 'class-validator';
 import { MediaGenerationDto } from './media-generation.dto';
 import { MediaType } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 import { VideoAspectRatio, VideoGenerationModel } from '../types/media.types';
+import { Type } from 'class-transformer';
+import { ReferenceImageDto } from './reference-data.dto';
+
 export class VideoGenerationDto extends MediaGenerationDto {
   constructor() {
     super();
@@ -63,4 +66,14 @@ export class VideoGenerationDto extends MediaGenerationDto {
   @IsOptional()
   @Min(1)
   seed?: number;
+
+  @ApiProperty({
+    description: 'The reference image for video generation',
+    type: ReferenceImageDto,
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ReferenceImageDto)
+  referenceImage?: ReferenceImageDto;
 }

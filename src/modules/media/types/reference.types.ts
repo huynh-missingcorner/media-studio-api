@@ -1,0 +1,20 @@
+export enum ReferenceType {
+  DEFAULT = 'default',
+  PERSON = 'person',
+  PRODUCT = 'product',
+  ANIMAL = 'animal',
+  STYLE = 'style',
+  RAW = 'raw',
+  CONTROL = 'control',
+  MASK = 'mask',
+}
+
+export enum SecondaryReferenceType {
+  SUBJECT_TYPE_DEFAULT = 'SUBJECT_TYPE_DEFAULT',
+  SUBJECT_TYPE_PERSON = 'SUBJECT_TYPE_PERSON',
+  SUBJECT_TYPE_PRODUCT = 'SUBJECT_TYPE_PRODUCT',
+  SUBJECT_TYPE_ANIMAL = 'SUBJECT_TYPE_ANIMAL',
+  REFERENCE_TYPE_STYLE = 'REFERENCE_TYPE_STYLE',
+  REFERENCE_TYPE_RAW = 'REFERENCE_TYPE_RAW',
+  REFERENCE_TYPE_CONTROL = 'REFERENCE_TYPE_CONTROL',
+}

@@ -4,6 +4,7 @@ import {
   VideoGenerationParams,
   MusicGenerationParams,
   SpeechGenerationParams,
+  ImageUpscaleParams,
 } from './interfaces/generation-params.interface';
 import { ImagenResponse } from './types/imagen.types';
 import { OperationResponse } from './types/veo.types';
@@ -33,6 +34,16 @@ export class VertexAiService {
   async generateImage(params: ImageGenerationParams): Promise<ImagenResponse> {
     this.logger.log(`Generating image with prompt: ${params.prompt}`);
     return this.imagenService.generateImage(params);
+  }
+
+  /**
+   * Upscale an image using the imagegeneration@002 model
+   * @param params Parameters for image upscaling
+   * @returns Upscaled image response
+   */
+  async upscaleImage(params: ImageUpscaleParams): Promise<ImagenResponse> {
+    this.logger.log(`Upscaling image from ${params.gcsUri}`);
+    return this.imagenService.upscaleImage(params);
   }
 
   /**
